@@ -3,8 +3,9 @@
 import React, { JSX, useEffect, useRef, useState } from "react";
 import { motion, useAnimation, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
-import { Home, Share2, ChevronRight, Palette, X } from "lucide-react";
+import { Home, Share2, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { ProgressIndicator } from "../components/ProgressIndicator";
 
 // --- Mock Store ---
 const useWrapperStore = {
@@ -21,84 +22,7 @@ const ARCHETYPE_DATA: Record<string, { description: string }> = {
   },
 };
 
-type ThemeKey = "spotify" | "neon" | "yellow" | "red" | "purple";
-
-type Theme = {
-  key: ThemeKey;
-  label: string;
-  accent: string;
-  accentLight: string;
-  accentDark: string;
-  accentCard: string;
-  glow: string;
-  selection: string;
-};
-
-const THEMES: Record<ThemeKey, Theme> = {
-  spotify: {
-    key: "spotify",
-    label: "Spotify Green",
-    accent: "#1DB954",
-    accentLight: "#4ade80",
-    accentDark: "#083015",
-    accentCard: "#235133",
-    glow: "rgba(29,185,84,0.4)",
-    selection: "rgba(29,185,84,0.3)",
-  },
-  neon: {
-    key: "neon",
-    label: "Neon Pink",
-    accent: "#FF3D90",
-    accentLight: "#FF80B8",
-    accentDark: "#2A0612",
-    accentCard: "#5A0E2A",
-    glow: "rgba(255,61,144,0.35)",
-    selection: "rgba(255,61,144,0.25)",
-  },
-  yellow: {
-    key: "yellow",
-    label: "Electric Yellow",
-    accent: "#FFCC00",
-    accentLight: "#FFE680",
-    accentDark: "#2A2606",
-    accentCard: "#5A4B08",
-    glow: "rgba(255,204,0,0.35)",
-    selection: "rgba(255,204,0,0.25)",
-  },
-  red: {
-    key: "red",
-    label: "Hot Red",
-    accent: "#FF3B30",
-    accentLight: "#FF6B62",
-    accentDark: "#2A0606",
-    accentCard: "#5A0B0B",
-    glow: "rgba(255,59,48,0.35)",
-    selection: "rgba(255,59,48,0.25)",
-  },
-  purple: {
-    key: "purple",
-    label: "Deep Purple",
-    accent: "#8A2BE2",
-    accentLight: "#B892FF",
-    accentDark: "#120615",
-    accentCard: "#3E1552",
-    glow: "rgba(138,43,226,0.35)",
-    selection: "rgba(138,43,226,0.25)",
-  },
-};
-
-const THEME_KEY = "app-theme-v1";
-
-const setDocumentThemeVars = (t: Theme): void => {
-  const root = document.documentElement;
-  root.style.setProperty("--accent", t.accent);
-  root.style.setProperty("--accent-light", t.accentLight);
-  root.style.setProperty("--accent-dark", t.accentDark);
-  root.style.setProperty("--accent-card", t.accentCard);
-  root.style.setProperty("--accent-glow", t.glow);
-  root.style.setProperty("--selection-color", t.selection);
-};
-
+// Removed theme system - using standard CSS variables from globals.css
 const useConfetti = (color?: string) => {
   return () => {
     const end = Date.now() + 1200;
@@ -108,14 +32,14 @@ const useConfetti = (color?: string) => {
         angle: 60,
         spread: 55,
         origin: { x: 0 },
-        colors: [color ?? "#1DB954", "#ffffff"],
+        colors: [color ?? "var(--color-theme-primary)", "#ffffff"],
       });
       confetti({
         particleCount: 4,
         angle: 120,
         spread: 55,
         origin: { x: 1 },
-        colors: [color ?? "#1DB954", "#ffffff"],
+        colors: [color ?? "var(--color-theme-primary)", "#ffffff"],
       });
       if (Date.now() < end) requestAnimationFrame(frame);
     })();
@@ -139,7 +63,8 @@ const GlowingStar: React.FC<GlowingStarProps> = ({
       ],
     }}
     transition={{ duration: 3, repeat: Infinity, delay }}
-    className={`absolute h-1.5 w-1.5 rounded-full bg-[var(--accent-light)] ${className}`}
+    className={`absolute h-1.5 w-1.5 rounded-full`}
+    style={{ backgroundColor: 'var(--color-theme-primary)' }}
   />
 );
 
@@ -213,19 +138,10 @@ export default function ArchetypeReveal(): JSX.Element {
   const controls: ReturnType<typeof useAnimation> = useAnimation();
   const [isFlipped, setIsFlipped] = useState<boolean>(false);
 
-  // theme state + dropdown
-  const [themeKey, setThemeKey] = useState<ThemeKey>(() => {
-    if (typeof window === "undefined") return "spotify";
-    return (localStorage.getItem(THEME_KEY) as ThemeKey) || "spotify";
-  });
-
   // Menu states
-  const [open, setOpen] = useState<boolean>(false); // Palette menu
   const [shareOpen, setShareOpen] = useState<boolean>(false); // Share menu
 
   // Refs
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const btnRef = useRef<HTMLButtonElement | null>(null);
   const shareMenuRef = useRef<HTMLDivElement | null>(null);
   const shareBtnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -233,28 +149,11 @@ export default function ArchetypeReveal(): JSX.Element {
   const data = ARCHETYPE_DATA[archetypeKey] || ARCHETYPE_DATA["The Wizard"];
   const displayedDescription = useTypewriter(data.description, 25, 2200);
 
-  // apply theme on mount & when changed
-  useEffect(() => {
-    const t = THEMES[themeKey] ?? THEMES.spotify;
-    setDocumentThemeVars(t);
-    if (typeof window !== "undefined")
-      localStorage.setItem(THEME_KEY, themeKey);
-  }, [themeKey]);
-
-  // click-outside to close menus
+  // click-outside to close share menu
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
       const target = e.target as Node | null;
       if (!target) return;
-
-      // Close Palette Menu
-      if (
-        open &&
-        !menuRef.current?.contains(target) &&
-        !btnRef.current?.contains(target)
-      ) {
-        setOpen(false);
-      }
 
       // Close Share Menu
       if (
@@ -267,9 +166,9 @@ export default function ArchetypeReveal(): JSX.Element {
     };
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
-  }, [open, shareOpen]);
+  }, [shareOpen]);
 
-  const triggerConfetti = useConfetti(THEMES[themeKey].accent);
+  const triggerConfetti = useConfetti();
 
   useEffect(() => {
     const sequence = async () => {
@@ -297,21 +196,6 @@ export default function ArchetypeReveal(): JSX.Element {
     sequence();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Handler when a theme is chosen
-  const handleChooseTheme = (key: ThemeKey): void => {
-    setThemeKey(key);
-    setOpen(false);
-    const t = THEMES[key];
-    setTimeout(() => {
-      confetti({
-        particleCount: 18,
-        spread: 60,
-        origin: { y: 0.5 },
-        colors: [t.accent, "#ffffff"],
-      });
-    }, 80);
-  };
 
   // --- Share Functionality ---
   const handleShare = (platform: string) => {
@@ -349,6 +233,13 @@ export default function ArchetypeReveal(): JSX.Element {
         className="w-full bg-[#020202] md:min-h-screen flex items-center justify-center selection:bg-[var(--selection-color)]"
         style={{ WebkitTapHighlightColor: "transparent" }}
       >
+        {/* Progress Indicator */}
+        <ProgressIndicator 
+          currentStep={5} 
+          totalSteps={6}
+          showNext={false}
+        />
+        
         <div className="md:max-w-[1330px] w-96  md:w-full p-4 sm:p-12 flex flex-col items-center justify-center gap-4 sm:gap-8 overflow-hidden bg-[#020202] text-white min-h-screen sm:min-h-0">
           {/* Background Layer (ring wave + ambient) */}
           <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
@@ -390,36 +281,50 @@ export default function ArchetypeReveal(): JSX.Element {
           </div>
 
           {/* --- TOP ROW --- */}
-          <div className="z-50 flex w-full items-center justify-between mt-2 relative px-2 sm:px-0">
-            <Link href="/">
-              <button className="flex cursor-pointer items-center gap-1 sm:gap-2 justify-center rounded-xl border border-white/10 h-8 w-16 sm:h-10 sm:w-24 bg-black/60 text-[9px] sm:text-[11px] font-bold uppercase tracking-[0.15em] sm:tracking-[0.2em] backdrop-blur-xl transition hover:bg-white/5">
-                <Home className="h-3 w-3 sm:h-4 sm:w-4" />{" "}
-                <span className="hidden sm:inline">HOME</span>
-                <span className="sm:hidden">HOME</span>
-              </button>
-            </Link>
+          {/* Home Button - Absolute positioned like share page */}
+          <Link href="/">
+            <motion.button
+              className="absolute top-6 left-6 md:top-8 md:left-8 z-30 group"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <div className="flex items-center gap-2 px-3 py-2 md:px-4 md:py-3 rounded-xl backdrop-blur-xl border border-white/20"
+                style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+              >
+                <Home className="w-4 h-4 md:w-5 md:h-5 text-white/80 group-hover:text-white transition-colors" />
+                <span className="text-xs md:text-sm font-black text-white/80 group-hover:text-white transition-colors hidden sm:inline">
+                  HOME
+                </span>
+              </div>
+            </motion.button>
+          </Link>
 
+          {/* Center Title */}
+          <div className="absolute top-16 md:top-20 left-1/2 -translate-x-1/2 z-30">
             <div className="relative">
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-1.5 sm:gap-3 opacity-95">
                 <div
                   className="h-[3px] sm:h-[4px] w-8 sm:w-14 rounded-full"
                   style={{
-                    background: "var(--accent)",
-                    boxShadow: "0 6px 20px var(--accent-glow)",
+                    background: "var(--color-theme-primary)",
+                    boxShadow: `0 6px 20px rgba(var(--color-theme-primary-rgb), 0.4)`,
                   }}
                 />
                 <div
                   className="h-[3px] sm:h-[4px] w-12 sm:w-20 rounded-full"
                   style={{
-                    background: "var(--accent)",
-                    boxShadow: "0 6px 20px var(--accent-glow)",
+                    background: "var(--color-theme-primary)",
+                    boxShadow: `0 6px 20px rgba(var(--color-theme-primary-rgb), 0.4)`,
                   }}
                 />
                 <div
                   className="h-[3px] sm:h-[4px] w-6 sm:w-10 rounded-full"
                   style={{
-                    background: "var(--accent)",
-                    boxShadow: "0 6px 20px var(--accent-glow)",
+                    background: "var(--color-theme-primary)",
+                    boxShadow: `0 6px 20px rgba(var(--color-theme-primary-rgb), 0.4)`,
                   }}
                 />
               </div>
@@ -427,116 +332,8 @@ export default function ArchetypeReveal(): JSX.Element {
                 The Oracle Has Spoken
               </h3>
             </div>
-
-            {/* Palette Button + Dropdown */}
-            <div className="relative">
-              <button
-                ref={btnRef}
-                onClick={() => setOpen((s) => !s)}
-                className="flex h-10 w-10 sm:h-14 sm:w-14 cursor-pointer items-center justify-center rounded-full border bg-[rgba(0,0,0,0.06)] transition hover:scale-105"
-                style={{
-                  borderColor: "var(--accent)",
-                  borderWidth: open ? "2px" : "1px",
-                  background: "rgba(0,0,0,0.06)",
-                  boxShadow: open
-                    ? "0 0 60px var(--accent-glow)"
-                    : "0 0 40px var(--accent-glow)",
-                  transition: "box-shadow 160ms ease, border-width 160ms ease",
-                }}
-                aria-haspopup="true"
-                aria-expanded={open}
-                title={open ? "Close themes" : "Choose theme"}
-              >
-                {open ? (
-                  <X className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
-                ) : (
-                  <Palette className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
-                )}
-              </button>
-
-              {open && (
-                <div
-                  ref={menuRef}
-                  className="absolute right-0 mt-3 w-48 sm:w-52 mx-auto rounded-2xl border bg-[#060607]/90 backdrop-blur-xl p-3 sm:p-4 z-9999!"
-                  style={{
-                    borderColor: "rgba(255,255,255,0.04)",
-                    boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
-                  }}
-                  role="menu"
-                  aria-label="Choose your vibe"
-                >
-                  <div className="px-2 sm:px-3 pb-2 sm:pb-3 mt-3 sm:mt-4 h-8 sm:h-10 flex justify-center items-center">
-                    <div className="text-[10px] sm:text-[11px] text-center font-bold tracking-wider uppercase text-gray-200">
-                      CHOOSE YOUR VIBE
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-center gap-3 sm:gap-4 px-1">
-                    {Object.values(THEMES).map((t) => {
-                      const active = t.key === themeKey;
-                      return (
-                        <button
-                          key={t.key}
-                          onClick={() => handleChooseTheme(t.key)}
-                          className="w-40 sm:w-44 mx-auto flex items-center gap-3 sm:gap-4 cursor-pointer rounded-xl p-2.5 sm:p-3 transition"
-                          style={{
-                            background: active
-                              ? `linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.12))`
-                              : "rgba(255,255,255,0.02)",
-                            border: active
-                              ? `2px solid var(--accent)`
-                              : "1px solid rgba(255,255,255,0.03)",
-                            boxShadow: active
-                              ? `0 8px 30px ${t.glow}`
-                              : "inset 0 1px 0 rgba(255,255,255,0.02)",
-                            paddingLeft: 12,
-                            paddingRight: 12,
-                            paddingBottom: 10,
-                            paddingTop: 10,
-                          }}
-                          role="menuitem"
-                          aria-checked={active}
-                        >
-                          <div
-                            className="h-7 w-7 sm:h-8 sm:w-8 rounded-full flex-shrink-0"
-                            style={{
-                              background: t.accent,
-                              boxShadow: `0 8px 30px ${t.glow}`,
-                              border: active
-                                ? `1px solid rgba(0,0,0,0.28)`
-                                : `1px solid rgba(0,0,0,0.25)`,
-                            }}
-                          />
-                          <div className="flex-1 text-left">
-                            <div className="text-xs sm:text-sm font-semibold text-gray-100">
-                              {t.label}
-                            </div>
-                          </div>
-
-                          {active ? (
-                            <div className="flex items-center justify-center w-5 sm:w-6">
-                              <div
-                                className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full"
-                                style={{
-                                  background: "var(--accent)",
-                                  boxShadow: `0 0 10px var(--accent-glow)`,
-                                  border: "1px solid rgba(255,255,255,0.04)",
-                                }}
-                              />
-                            </div>
-                          ) : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="w-44 sm:w-48 text-[11px] sm:text-[12px] text-gray-400 h-12 sm:h-14 flex items-center justify-center text-center">
-                    Your theme persists across sessions
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
+
 
           {/* --- CENTER: 3D CARD --- */}
           <div
@@ -560,8 +357,11 @@ export default function ArchetypeReveal(): JSX.Element {
             >
               {/* FRONT */}
               <div
-                className="absolute inset-0 flex items-center justify-center rounded-3xl sm:rounded-[48px] border border-white/10 bg-[var(--accent-card)]/20 backdrop-blur-md"
-                style={{ backfaceVisibility: "hidden" }}
+                className="absolute inset-0 flex items-center justify-center rounded-3xl sm:rounded-[48px] border border-white/10 backdrop-blur-md"
+                style={{ 
+                  backgroundColor: 'rgba(var(--color-theme-primary-rgb), 0.1)',
+                  backfaceVisibility: "hidden" 
+                }}
               >
                 <div className="text-2xl sm:text-4xl animate-pulse opacity-40">
                   🔮
@@ -570,11 +370,12 @@ export default function ArchetypeReveal(): JSX.Element {
 
               {/* BACK */}
               <div
-                className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl sm:rounded-[48px] border bg-gradient-to-br from-[var(--accent-card)] via-[var(--accent-dark)] to-[rgba(0,0,0,0.12)] overflow-hidden px-2 sm:px-4"
+                className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl sm:rounded-[48px] border overflow-hidden px-2 sm:px-4"
                 style={{
                   backfaceVisibility: "hidden",
                   transform: "rotateY(180deg)",
-                  boxShadow: `0 0 100px var(--accent-glow)`,
+                  background: `linear-gradient(to bottom right, rgba(var(--color-theme-primary-rgb), 0.2), rgba(var(--color-theme-primary-rgb), 0.05), rgba(0,0,0,0.12))`,
+                  boxShadow: `0 0 100px rgba(var(--color-theme-primary-rgb), 0.4)`,
                 }}
               >
                 <GlowingStar
@@ -596,26 +397,26 @@ export default function ArchetypeReveal(): JSX.Element {
 
                 <div
                   className="absolute top-4 sm:top-8 left-4 sm:left-8 h-6 w-6 sm:h-8 sm:w-8 border-l-[3px] sm:border-l-[4px] border-t-[3px] sm:border-t-[4px] rounded-tl-md"
-                  style={{ borderColor: "var(--accent-light)" }}
+                  style={{ borderColor: "var(--color-theme-primary)" }}
                 />
                 <div
                   className="absolute top-4 sm:top-8 right-4 sm:right-8 h-6 w-6 sm:h-8 sm:w-8 border-r-[3px] sm:border-r-[4px] border-t-[3px] sm:border-t-[4px] rounded-tr-md"
-                  style={{ borderColor: "var(--accent-light)" }}
+                  style={{ borderColor: "var(--color-theme-primary)" }}
                 />
                 <div
                   className="absolute bottom-4 sm:bottom-8 left-4 sm:left-8 h-6 w-6 sm:h-8 sm:w-8 border-l-[3px] sm:border-l-[4px] border-b-[3px] sm:border-b-[4px] rounded-bl-md"
-                  style={{ borderColor: "var(--accent-light)" }}
+                  style={{ borderColor: "var(--color-theme-primary)" }}
                 />
                 <div
                   className="absolute bottom-4 sm:bottom-8 right-4 sm:right-8 h-6 w-6 sm:h-8 sm:w-8 border-r-[3px] sm:border-r-[4px] border-b-[3px] sm:border-b-[4px] rounded-br-md"
-                  style={{ borderColor: "var(--accent-light)" }}
+                  style={{ borderColor: "var(--color-theme-primary)" }}
                 />
 
                 <h1
                   className="bg-clip-text text-5xl sm:text-8xl md:text-9xl font-black tracking-tighter text-transparent filter drop-shadow-[0_0_30px_rgba(0,0,0,0.5)] leading-none"
                   style={{
                     backgroundImage:
-                      "linear-gradient(to bottom, #fff, var(--accent-light), var(--accent-card))",
+                      "linear-gradient(to bottom, #fff, var(--color-theme-primary), rgba(var(--color-theme-primary-rgb), 0.6))",
                   }}
                 >
                   {archetypeKey}
@@ -624,9 +425,24 @@ export default function ArchetypeReveal(): JSX.Element {
             </motion.div>
           </div>
 
+          {/* Description Text Below Card */}
+          <motion.div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-[200px] sm:translate-y-[240px] md:translate-y-[280px] z-10 w-[280px] sm:w-[740px] max-w-[65vw] sm:max-w-[56vw]"
+            initial={{ opacity: 0, y: 30 }}
+            animate={isFlipped ? { opacity: 1, y: 0 } : {}}
+            transition={{ delay: 1, duration: 0.6 }}
+          >
+            <div className="relative backdrop-blur-sm px-6 py-4 sm:px-8 sm:py-5 md:px-12 md:py-6 rounded-xl md:rounded-2xl border border-white/5 bg-black/40 shadow-2xl">
+              <p className="text-center text-sm sm:text-lg md:text-xl font-semibold leading-relaxed text-gray-100 px-4 sm:px-8 drop-shadow-md">
+                {displayedDescription}
+                <span className="ml-1 inline-block h-4 sm:h-6 w-0.5 sm:w-1 bg-[var(--color-theme-primary)] animate-pulse align-middle" />
+              </p>
+            </div>
+          </motion.div>
+
           {/* --- BOTTOM ROW --- */}
-          <div className="z-30 flex w-full items-center justify-between mb-4 sm:mb-30 relative px-2 sm:px-0">
-            {/* Share Popup Implementation */}
+          {/* Share Popup Implementation - Absolute positioned like share page */}
+          <div className="absolute bottom-6 left-6 md:bottom-8 md:left-8 z-30">
             <div className="relative">
               <AnimatePresence>
                 {" "}
@@ -736,42 +552,23 @@ export default function ArchetypeReveal(): JSX.Element {
                 </motion.div>
               </button>
             </div>
-
-            <motion.div
-              className="w-[280px] sm:w-[740px] max-w-[65vw] sm:max-w-[56vw] min-h-[140px] sm:min-h-[160px] rounded-2xl border border-white/5 bg-black/40 backdrop-blur-2xl relative flex items-center justify-center shadow-2xl"
-              initial={{ opacity: 0, y: 30 }}
-              animate={isFlipped ? { opacity: 1, y: 0 } : {}}
-              transition={{ delay: 0.8, duration: 0.6 }}
-            >
-              <GlowingStar
-                className="top-4 sm:top-6 left-6 sm:left-12"
-                delay={0.3}
-              />
-              <GlowingStar
-                className="top-6 sm:top-10 right-10 sm:right-20"
-                delay={0.9}
-              />
-              <GlowingStar
-                className="bottom-6 sm:bottom-10 left-1/4"
-                delay={1.5}
-              />
-              <GlowingStar
-                className="bottom-4 sm:bottom-6 right-6 sm:right-12"
-                delay={0.1}
-              />
-              <GlowingStar className="top-1/2 right-4 sm:right-8" delay={2.1} />
-
-              <p className="text-center text-sm sm:text-2xl font-semibold leading-[1.5] text-gray-100 px-4 sm:px-14 drop-shadow-md max-w-[88%]">
-                {displayedDescription}
-                <span className="ml-1 inline-block h-4 sm:h-6 w-0.5 sm:w-1 bg-[var(--accent)] animate-pulse align-middle" />
-              </p>
-            </motion.div>
-            <Link href="/share">
-              <button className="flex h-12 cursor-pointer w-12 sm:h-16 sm:w-16 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition hover:bg-white/5">
-                <ChevronRight className="h-6 w-6 sm:h-9 sm:w-9" />
-              </button>
-            </Link>
           </div>
+
+          {/* Skip/Next Button - Absolute positioned like share page */}
+          <Link href="/share">
+            <motion.button
+              className="absolute bottom-6 right-6 md:bottom-8 md:right-8 z-30 group"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 1 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <div className="flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition hover:bg-white/5">
+                <ChevronRight className="h-6 w-6 sm:h-9 sm:w-9" />
+              </div>
+            </motion.button>
+          </Link>
         </div>
       </div>
     </>

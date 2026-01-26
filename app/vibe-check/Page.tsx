@@ -14,15 +14,13 @@ export default function VibeCheckPage() {
     <div className="relative w-full h-screen">
       <Screen4VibeCheck vibes={mockData.vibes} />
 
-      {/* Progress Indicator with navigation */}
       <ProgressIndicator
-        currentStep={3}
+        currentStep={4}
         totalSteps={6}
         onNext={() => router.push("/persona")}
         showNext={true}
       />
 
-      {/* Share Buttons */}
       <ShareButtons
         title="My Vibe Check - Stellar Wrapped 2026"
         text={`My Stellar vibe: ${mockData.vibes[0].percentage}% ${mockData.vibes[0].label}! What's yours? 🎨 #StellarWrapped #DeFi`}

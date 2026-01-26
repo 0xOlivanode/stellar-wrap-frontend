@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Zimma - Stellar Wrapped",
+  title: "Stellar Wrap | Reveal Your On-Chain Persona",
   description: "Your Stellar Year in Review",
 };
 

@@ -1,16 +1,40 @@
+"use client";
+
 import { motion } from 'framer-motion';
 import { Home } from 'lucide-react';
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 
 interface ProgressIndicatorProps {
   currentStep: number;
   totalSteps: number;
   onNext?: () => void;
   showNext?: boolean;
+  routes?: string[]; // Optional array of routes for each step (1-indexed)
 }
 
-export function ProgressIndicator({ currentStep, totalSteps, onNext, showNext = false }: ProgressIndicatorProps) {
+// Default route mapping based on the app flow
+const DEFAULT_ROUTES = [
+  '/',           // Step 1: Landing
+  '/connect',    // Step 2: Connect
+  '/loading',    // Step 3: Loading
+  '/vibe-check', // Step 4: Vibe Check
+  '/persona',    // Step 5: Persona
+  '/share',      // Step 6: Share
+];
+
+export function ProgressIndicator({ currentStep, totalSteps, onNext, showNext = false, routes }: ProgressIndicatorProps) {
  const router = useRouter();
+ const routeMap = routes || DEFAULT_ROUTES;
+ const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+   if (typeof window === 'undefined') return;
+   const checkMobile = () => setIsMobile(window.innerWidth < 768);
+   checkMobile();
+   window.addEventListener('resize', checkMobile);
+   return () => window.removeEventListener('resize', checkMobile);
+ }, []);
 
   return (
     <>
@@ -36,38 +60,57 @@ export function ProgressIndicator({ currentStep, totalSteps, onNext, showNext = 
 
       {/* Progress dots */}
       <div className="absolute top-6 md:top-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 md:gap-3">
-        {[...Array(totalSteps)].map((_, index) => (
-          <motion.div
-            key={index}
-            className="relative"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-          >
-            {/* Active indicator */}
-            {index + 1 === currentStep ? (
-              <motion.div
-                className="h-1.5 md:h-2 rounded-full"
-                style={{ 
-                  width: window.innerWidth < 768 ? '40px' : '60px',
-                  backgroundColor: 'var(--color-theme-primary)',
-                  boxShadow: `0 0 20px rgba(var(--color-theme-primary-rgb), 0.6)`,
-                }}
-                layoutId="active-indicator"
-                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              />
-            ) : (
-              /* Inactive indicator */
-              <div
-                className="h-1.5 md:h-2 rounded-full"
-                style={{ 
-                  width: index + 1 < currentStep ? (window.innerWidth < 768 ? '30px' : '40px') : (window.innerWidth < 768 ? '20px' : '30px'),
-                  backgroundColor: index + 1 < currentStep ? `rgba(var(--color-theme-primary-rgb), 0.4)` : 'rgba(255, 255, 255, 0.2)',
-                }}
-              />
-            )}
-          </motion.div>
-        ))}
+        {[...Array(totalSteps)].map((_, index) => {
+          const stepNumber = index + 1;
+          const route = routeMap[index];
+          const isClickable = route && stepNumber !== currentStep;
+          
+          const handleClick = () => {
+            if (isClickable && route) {
+              router.push(route);
+            }
+          };
+
+          return (
+            <motion.button
+              key={index}
+              onClick={handleClick}
+              disabled={!isClickable}
+              className="relative cursor-pointer disabled:cursor-default focus:outline-none p-2 -m-2"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              whileHover={isClickable ? { scale: 1.2 } : {}}
+              whileTap={isClickable ? { scale: 0.9 } : {}}
+              title={route && isClickable ? `Go to step ${stepNumber}` : stepNumber === currentStep ? `Current step: ${stepNumber}` : undefined}
+            >
+              {/* Active indicator */}
+              {stepNumber === currentStep ? (
+                <motion.div
+                  className="h-1.5 md:h-2 rounded-full"
+                  style={{ 
+                    width: isMobile ? '40px' : '60px',
+                    backgroundColor: 'var(--color-theme-primary)',
+                    boxShadow: `0 0 20px rgba(var(--color-theme-primary-rgb), 0.6)`,
+                  }}
+                  layoutId="active-indicator"
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                />
+              ) : (
+                /* Inactive indicator */
+                <div
+                  className="h-1.5 md:h-2 rounded-full transition-all"
+                  style={{ 
+                    width: stepNumber < currentStep ? (isMobile ? '30px' : '40px') : (isMobile ? '20px' : '30px'),
+                    backgroundColor: stepNumber < currentStep ? `rgba(var(--color-theme-primary-rgb), 0.4)` : 'rgba(255, 255, 255, 0.2)',
+                    opacity: isClickable ? 1 : 0.5,
+                    cursor: isClickable ? 'pointer' : 'default',
+                  }}
+                />
+              )}
+            </motion.button>
+          );
+        })}
       </div>
 
       {/* Next button */}

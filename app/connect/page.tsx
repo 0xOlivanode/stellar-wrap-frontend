@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Wallet, Copy } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useWrapperStore } from '../store/useWrapperStore';
 import { connectFreighter } from '../utils/walletConnect';
+import { ProgressIndicator } from '../components/ProgressIndicator';
 
 export default function ConnectPage() {
   const router = useRouter();
@@ -18,152 +20,332 @@ export default function ConnectPage() {
     try {
       const publicKey = await connectFreighter();
       setAddress(publicKey);
-      // Redirect to loading page after successful connection
       router.push('/loading');
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to connect wallet';
       setError(errorMessage);
+    } finally {
+      setConnecting(false);
     }
   };
 
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleManualSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (walletAddress.trim()) {
       setAddress(walletAddress.trim());
       router.push('/loading');
     }
   };
 
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setWalletAddress(e.target.value);
+    setError(null);
+  };
+
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setWalletAddress(text);
+      setError(null);
+    } catch (err) {
+      setError('Failed to paste from clipboard');
+    }
+  };
+
+  const handleConnect = () => {
+    handleManualSubmit();
+  };
+
   const handleDemoMode = () => {
-    // Demo mode with a sample Stellar address
-    setAddress('GDEMOADDRESSFORSTELLARWRAPDEMOPURPOSES12345678');
-    router.push('/loading');
+    const demoAddress = 'GDEMOADDRESSFORSTELLARWRAPDEMOPURPOSES12345678';
+    setWalletAddress(demoAddress);
+    setTimeout(() => {
+      setAddress(demoAddress);
+      router.push('/loading');
+    }, 100);
+  };
+
+  const onBack = () => {
+    router.push('/');
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-bg-primary">
-      {/* Subtle Gradient Overlay */}
-      <div className="fixed inset-0 bg-gradient-subtle opacity-20 pointer-events-none" />
+    <div className="relative w-full min-h-screen h-screen overflow-hidden flex items-center justify-center" style={{ backgroundColor: 'var(--color-theme-background)' }}>
+      {/* Progress Indicator */}
+      <ProgressIndicator 
+        currentStep={2} 
+        totalSteps={6}
+        showNext={false}
+      />
+      
+      {/* Background elements */}
+      <div className="absolute inset-0 bg-gradient-to-br from-black via-black to-black opacity-60" />
+      
+      {/* Animated grid background */}
+      <div className="absolute inset-0 opacity-20">
+        <motion.div
+          className="w-full h-full"
+          style={{
+            backgroundImage: `linear-gradient(rgba(var(--color-theme-primary-rgb), 0.3) 1px, transparent 1px),
+                             linear-gradient(90deg, rgba(var(--color-theme-primary-rgb), 0.3) 1px, transparent 1px)`,
+            backgroundSize: '100px 100px',
+          }}
+          animate={{
+            backgroundPosition: ['0px 0px', '100px 100px'],
+          }}
+          transition={{
+            duration: 3,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+        />
+      </div>
 
-      {/* Back Button */}
-      <button
-        onClick={() => router.push('/')}
-        className="absolute top-6 left-6 z-30 flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors group"
+      {/* Glowing orbs */}
+      <motion.div
+        className="absolute w-96 h-96 rounded-full blur-[120px]"
+        style={{ backgroundColor: 'rgba(var(--color-theme-primary-rgb), 0.3)' }}
+        animate={{
+          scale: [1, 1.3, 1],
+          opacity: [0.3, 0.5, 0.3],
+          x: [-50, 50, -50],
+          y: [-50, 50, -50],
+        }}
+        transition={{
+          duration: 5,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      />
+
+      {/* Back button */}
+      <motion.button
+        onClick={onBack}
+        className="absolute top-6 left-6 md:top-8 md:left-8 z-20 group"
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.2 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
       >
-        <ArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
-        <span className="text-sm font-medium">BACK</span>
-      </button>
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl backdrop-blur-xl border border-white/20"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+        >
+          <ArrowLeft className="w-5 h-5 text-white group-hover:text-white/80 transition-colors" />
+          <span className="text-sm font-black text-white/80 group-hover:text-white transition-colors hidden sm:inline">
+            BACK
+          </span>
+        </div>
+      </motion.button>
 
-      {/* Main Content */}
-      <main className="relative z-20 flex min-h-screen flex-col items-center justify-center px-4 sm:px-6 lg:px-8 py-20">
-        <div className="w-full max-w-md mx-auto space-y-10">
-          {/* Header */}
-          <div className="text-center space-y-6 animate-fade-in">
-            <h1 className="text-6xl sm:text-7xl font-black leading-none tracking-tight">
-              <span className="gradient-text block">CONNECT</span>
-              <span className="block text-text-primary mt-2">WALLET</span>
-            </h1>
-            <p className="text-base text-text-secondary max-w-sm mx-auto leading-relaxed">
-              Enter your Stellar wallet address to unwrap your 2026 journey
-            </p>
-          </div>
-
-          {/* Manual Address Input Form */}
-          <form 
-            onSubmit={handleManualSubmit} 
-            className="space-y-5 animate-fade-in-up delay-200"
+      {/* Main content */}
+      <div className="relative z-10 max-w-2xl w-full mx-auto px-4 sm:px-6 md:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="text-center mb-8 md:mb-12"
+        >
+          <motion.div
+            className="inline-block mb-6"
+            animate={{
+              rotate: [0, 5, -5, 0],
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+            }}
           >
             <div className="relative">
-              <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-3 text-center">
-                Manual Entry
-              </label>
+              <motion.div
+                className="absolute inset-0 blur-2xl rounded-full"
+                style={{ backgroundColor: 'rgba(var(--color-theme-primary-rgb), 0.4)' }}
+                animate={{
+                  opacity: [0.5, 0.8, 0.5],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                }}
+              />
+              <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex items-center justify-center border-2"
+                style={{ 
+                  backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                  borderColor: 'rgba(var(--color-theme-primary-rgb), 0.5)',
+                }}
+              >
+                <Wallet className="w-10 h-10 sm:w-12 sm:h-12" style={{ color: 'var(--color-theme-primary)' }} />
+              </div>
+            </div>
+          </motion.div>
+
+          <h1 
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black mb-3 md:mb-4 tracking-tight leading-none"
+            style={{
+              background: `linear-gradient(180deg, #ffffff 0%, var(--color-theme-primary) 100%)`,
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            CONNECT WALLET
+          </h1>
+          <p className="text-base sm:text-lg md:text-xl font-bold text-white/70 leading-relaxed">
+            Enter your Stellar wallet address to unwrap your 2026 journey
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="relative"
+        >
+          <motion.div
+            className="absolute -inset-1 rounded-2xl blur-xl"
+            style={{ backgroundColor: 'rgba(var(--color-theme-primary-rgb), 0.3)' }}
+            animate={{
+              opacity: [0.3, 0.5, 0.3],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+            }}
+          />
+          
+          <div className="relative backdrop-blur-xl p-6 sm:p-8 rounded-2xl border"
+            style={{ 
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              borderColor: 'rgba(var(--color-theme-primary-rgb), 0.3)',
+            }}
+          >
+            <label className="block text-sm font-black text-white/70 mb-3 tracking-wider">
+              STELLAR ADDRESS
+            </label>
+            
+            <div className="relative mb-6">
               <input
                 type="text"
                 value={walletAddress}
-                onChange={(e) => setWalletAddress(e.target.value)}
-                placeholder="G... (Stellar Address)"
-                className={`w-full px-6 py-4.5 bg-bg-elevated border-2 ${
-                  error ? 'border-red-500' : 'border-muted hover:border-accent-primary/50'
-                } rounded-2xl text-text-primary placeholder-text-muted focus:outline-none focus:border-accent-primary transition-all text-center font-mono text-sm tracking-wide`}
+                onChange={handleAddressChange}
+                placeholder="Paste your Stellar address here"
+                className="w-full px-5 py-4 rounded-xl font-mono text-sm sm:text-base border-2 transition-all duration-200 focus:outline-none"
+                style={{
+                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                  borderColor: error ? 'rgba(239, 68, 68, 0.5)' : 'rgba(255, 255, 255, 0.1)',
+                  color: 'white',
+                }}
               />
-            </div>
-
-            <button
-              type="submit"
-              disabled={!walletAddress.trim() || isConnecting}
-              className="w-full btn-primary flex items-center justify-center gap-2 text-base font-bold py-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:transform-none"
-            >
-              START WRAPPING
-            </button>
-          </form>
-
-          {/* Divider */}
-          <div className="relative py-2 animate-fade-in delay-400">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-muted"></div>
-            </div>
-            <div className="relative flex justify-center">
-              <span className="px-6 bg-bg-primary text-text-muted text-xs font-medium uppercase tracking-wider">
-                Or Use Wallet
-              </span>
-            </div>
-          </div>
-
-          {/* Freighter Connect Button */}
-          <div className="space-y-3 animate-fade-in-up delay-600">
-            <button
-              onClick={handleFreighterConnect}
-              disabled={isConnecting}
-              className={`w-full px-6 py-5 bg-bg-elevated border-2 ${
-                error ? 'border-red-500' : 'border-accent-primary/30 hover:border-accent-primary'
-              } rounded-2xl text-text-primary font-bold hover:bg-accent-primary/5 transition-all flex items-center justify-center gap-4 group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-bg-elevated`}
-            >
-              {isConnecting ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
-                  <span className="text-base">Connecting...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-7 h-7 text-accent-primary transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" />
-                  </svg>
-                  <span className="text-base">Connect with Freighter</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="p-4 bg-red-500/10 border-2 border-red-500/50 rounded-xl text-red-400 text-sm text-center animate-fade-in font-medium">
-              ⚠️ {error}
-            </div>
-          )}
-
-          {/* Footer Links */}
-          <div className="text-center space-y-4 pt-6 animate-fade-in delay-800">
-            <p className="text-xs text-text-muted leading-relaxed">
-              Don&apos;t have a Stellar wallet?{' '}
-              <a
-                href="https://stellar.org/wallets"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-accent-primary hover:text-accent-primary-hover font-medium underline decoration-1 underline-offset-2 transition-colors"
+              
+              <motion.button
+                onClick={handlePaste}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-white/10 transition-colors"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                title="Paste from clipboard"
               >
-                Get one here
-              </a>
-            </p>
-            <button
-              onClick={handleDemoMode}
-              className="text-xs text-text-secondary hover:text-accent-primary transition-colors font-medium flex items-center justify-center gap-2 mx-auto group"
+                <Copy className="w-5 h-5" style={{ color: 'var(--color-theme-primary)' }} />
+              </motion.button>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="mb-6 p-4 bg-red-500/10 border-2 border-red-500/50 rounded-xl text-red-400 text-sm text-center font-medium">
+                ⚠️ {error}
+              </div>
+            )}
+
+            <motion.button
+              onClick={handleConnect}
+              disabled={!walletAddress.trim() || isConnecting}
+              className="w-full relative group disabled:opacity-50 disabled:cursor-not-allowed"
+              whileHover={{ scale: !walletAddress.trim() || isConnecting ? 1 : 1.02 }}
+              whileTap={{ scale: !walletAddress.trim() || isConnecting ? 1 : 0.98 }}
             >
-              <span>Try demo mode</span>
-              <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
-            </button>
+              <motion.div
+                className="absolute -inset-1 rounded-xl blur-lg"
+                style={{ backgroundColor: 'rgba(var(--color-theme-primary-rgb), 0.4)' }}
+                animate={{
+                  opacity: [0.5, 0.8, 0.5],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                }}
+              />
+              
+              <div 
+                className="relative px-8 py-5 rounded-xl font-black text-lg sm:text-xl tracking-tight transition-all duration-200 flex items-center justify-center gap-3"
+                style={{
+                  backgroundColor: isConnecting ? 'rgba(var(--color-theme-primary-rgb), 0.5)' : 'var(--color-theme-primary)',
+                  color: '#000000',
+                  cursor: (!walletAddress.trim() || isConnecting) ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isConnecting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                    <span>CONNECTING...</span>
+                  </>
+                ) : (
+                  'START WRAPPING'
+                )}
+              </div>
+            </motion.button>
+
+            {/* Freighter Connect Option */}
+            <div className="mt-6 pt-6 border-t border-white/10">
+              <p className="text-center text-sm font-medium text-white/50 mb-4">
+                or
+              </p>
+              <motion.button
+                onClick={handleFreighterConnect}
+                disabled={isConnecting}
+                className="w-full px-6 py-4 bg-transparent border-2 rounded-xl font-bold text-white/70 hover:text-white transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  borderColor: 'rgba(var(--color-theme-primary-rgb), 0.3)',
+                }}
+                whileHover={{ scale: isConnecting ? 1 : 1.02 }}
+                whileTap={{ scale: isConnecting ? 1 : 0.98 }}
+              >
+                {isConnecting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
+                    <span>Connecting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="w-5 h-5" style={{ color: 'var(--color-theme-primary)' }} />
+                    <span>Connect with Freighter</span>
+                  </>
+                )}
+              </motion.button>
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-white/10">
+              <p className="text-xs sm:text-sm text-white/50 text-center mb-3">
+                Don't have a Stellar wallet?{' '}
+                <a 
+                  href="https://stellar.org/wallets" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="font-bold hover:text-white/80 transition-colors"
+                  style={{ color: 'var(--color-theme-primary)' }}
+                >
+                  Get one here
+                </a>
+              </p>
+              <motion.button
+                onClick={handleDemoMode}
+                className="w-full text-xs sm:text-sm font-bold text-white/40 hover:text-white/60 transition-colors"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                Or click here to try demo mode →
+              </motion.button>
+            </div>
           </div>
-        </div>
-      </main>
+        </motion.div>
+      </div>
     </div>
   );
 }

@@ -1,11 +1,12 @@
-import { isConnected, getPublicKey, requestAccess } from '@stellar/freighter-api';
+import { isConnected, getAddress, requestAccess } from '@stellar/freighter-api';
 
 /**
  * Checks if Freighter wallet extension is installed
  */
 export const isFreighterInstalled = async (): Promise<boolean> => {
   try {
-    return await isConnected();
+    const result = await isConnected();
+    return !result.error && result.isConnected;
   } catch (error) {
     return false;
   }
@@ -27,20 +28,14 @@ export const connectFreighter = async (): Promise<string> => {
 
   try {
     // Request access to the wallet
-    const accessGranted = await requestAccess();
+    const accessResult = await requestAccess();
     
-    if (!accessGranted) {
+    if (accessResult.error || !accessResult.address) {
       throw new Error('Connection rejected. Please approve the connection in Freighter.');
     }
 
-    // Get the public key
-    const publicKey = await getPublicKey();
-    
-    if (!publicKey) {
-      throw new Error('Failed to retrieve wallet address. Please try again.');
-    }
-
-    return publicKey;
+    // Return the address from requestAccess (it already provides the address)
+    return accessResult.address;
   } catch (error: any) {
     // Handle specific error cases
     if (error.message?.includes('User declined')) {
@@ -66,7 +61,8 @@ export const getCurrentPublicKey = async (): Promise<string | null> => {
       return null;
     }
     
-    return await getPublicKey();
+    const addressResult = await getAddress();
+    return addressResult.error ? null : addressResult.address;
   } catch (error) {
     return null;
   }

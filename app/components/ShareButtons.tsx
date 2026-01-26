@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { Share2, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface ShareButtonsProps {
   title: string;
@@ -12,24 +12,32 @@ interface ShareButtonsProps {
 
 export function ShareButtons({ title, text, hashtags = [] }: ShareButtonsProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
   
-  const shareUrl = window.location.href;
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setShareUrl(window.location.href);
+    }
+  }, []);
+
   const hashtagString = hashtags.join(',');
 
   const shareLinks = {
-    twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}&hashtags=${hashtagString}`,
-    whatsapp: `https://wa.me/?text=${encodeURIComponent(`${text} ${shareUrl}`)}`,
-    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
-    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
-    telegram: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`,
+    twitter: shareUrl ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}&hashtags=${hashtagString}` : '',
+    whatsapp: shareUrl ? `https://wa.me/?text=${encodeURIComponent(`${text} ${shareUrl}`)}` : '',
+    facebook: shareUrl ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}` : '',
+    linkedin: shareUrl ? `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}` : '',
+    telegram: shareUrl ? `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}` : '',
   };
 
   const handleShare = (platform: keyof typeof shareLinks) => {
-    window.open(shareLinks[platform], '_blank', 'width=600,height=400');
+    if (typeof window !== 'undefined' && shareLinks[platform]) {
+      window.open(shareLinks[platform], '_blank', 'width=600,height=400');
+    }
   };
 
   const handleNativeShare = async () => {
-    if (navigator.share) {
+    if (typeof navigator !== 'undefined' && 'share' in navigator && typeof navigator.share === 'function') {
       try {
         await navigator.share({
           title,
@@ -140,7 +148,7 @@ export function ShareButtons({ title, text, hashtags = [] }: ShareButtonsProps) 
             </motion.button>
 
             {/* Native Share (Mobile) */}
-            {navigator.share && (
+            {typeof navigator !== 'undefined' && 'share' in navigator && typeof navigator.share === 'function' && (
               <motion.button
                 whileHover={{ scale: 1.05, x: 5 }}
                 whileTap={{ scale: 0.95 }}
@@ -169,7 +177,7 @@ export function ShareButtons({ title, text, hashtags = [] }: ShareButtonsProps) 
           whileTap={{ scale: 0.95 }}
         >
           <motion.div
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+            className="absolute inset-0  from-transparent via-white/10 to-transparent"
             animate={{
               x: isOpen ? 0 : ['-200%', '200%'],
             }}

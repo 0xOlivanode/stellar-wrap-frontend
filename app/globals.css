@@ -7,6 +7,7 @@
   /* Theme Variables - Default (Green) */
   --color-theme-primary: #1db954;
   --color-theme-primary-rgb: 29, 185, 84;
+  --color-theme-background: #000000;
 }
 
 @theme inline {
