@@ -10,8 +10,8 @@
     "prepare": "husky install"
   },
   "dependencies": {
-    "@creit-tech/stellar-wallets-kit": "npm:@jsr/creit-tech__stellar-wallets-kit@^2.0.0-beta.9",
     "@ai-sdk/openai": "^0.0.54",
+    "@creit-tech/stellar-wallets-kit": "npm:@jsr/creit-tech__stellar-wallets-kit@^2.0.0-beta.9",
     "@stellar/freighter-api": "^6.0.1",
     "ai": "^3.4.10",
     "canvas-confetti": "^1.9.4",
@@ -24,6 +24,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-router-dom": "^7.12.0",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "zustand": "^5.0.10"
   },

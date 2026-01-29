@@ -11,7 +11,8 @@ import { useState, RefObject } from "react";
 import Link from "next/link";
 import { downloadShareImage } from "../utils/imageExport";
 import { mintWrap } from "../utils/walletKit";
-import { useWrapperStore } from "@/app/store/useWrapperStore";
+import { useWrapStore } from "@/app/store/wrapStore";
+import { toast } from "sonner";
 
 interface ShareCardProps {
   username: string;
@@ -34,7 +35,7 @@ export function ShareCard({
   const [isMinting, setIsMinting] = useState(false);
   const [mintSuccess, setMintSuccess] = useState<string | null>(null);
   const [mintError, setMintError] = useState<string | null>(null);
-  const { address } = useWrapperStore();
+  const { address } = useWrapStore();
 
   const handleDownload = async () => {
     if (!shareImageRef.current) return;
@@ -57,8 +58,15 @@ export function ShareCard({
   };
 
   const handleMint = async () => {
+    console.log("Mint attempt - Address:", address);
+
     if (!address) {
-      setMintError("Please connect your wallet first");
+      toast.error("Please connect your wallet first", {
+        action: {
+          label: "Connect Wallet",
+          onClick: () => (window.location.href = "/connect"),
+        },
+      });
       return;
     }
 
@@ -69,10 +77,24 @@ export function ShareCard({
     try {
       const txHash = await mintWrap(address);
       setMintSuccess(txHash);
+      toast.success("Minted successfully!", {
+        description: "View your transaction on Stellar Explorer",
+        action: {
+          label: "View",
+          onClick: () =>
+            window.open(
+              `https://stellar.expert/explorer/testnet/tx/${txHash}`,
+              "_blank",
+            ),
+        },
+      });
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to mint";
       setMintError(errorMessage);
+      toast.error("Minting failed", {
+        description: errorMessage,
+      });
     } finally {
       setIsMinting(false);
     }
@@ -293,47 +315,6 @@ export function ShareCard({
               </span>
             </div>
           </motion.button>
-
-          {/* Error/Success Messages */}
-          {mintError && !address && (
-            <div className="mt-4 p-4 bg-red-500/10 border-2 border-red-500/50 rounded-xl text-red-400 text-sm font-medium">
-              ⚠️ {mintError}.{" "}
-              <Link
-                href="/connect"
-                className="underline hover:text-red-300 transition-colors"
-              >
-                Connect Wallet
-              </Link>
-            </div>
-          )}
-
-          {mintError && address && (
-            <div className="mt-4 p-4 bg-red-500/10 border-2 border-red-500/50 rounded-xl text-red-400 text-sm font-medium">
-              ⚠️ {mintError}
-            </div>
-          )}
-
-          {mintSuccess && (
-            <div
-              className="mt-4 p-4 border-2 rounded-xl text-sm font-medium"
-              style={{
-                backgroundColor: "rgba(var(--color-theme-primary-rgb), 0.1)",
-                borderColor: "rgba(var(--color-theme-primary-rgb), 0.5)",
-                color: "var(--color-theme-primary)",
-              }}
-            >
-              ✓ Minted successfully!{" "}
-              <a
-                href={`https://stellar.expert/explorer/testnet/tx/${mintSuccess}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:opacity-80 transition-opacity inline-flex items-center gap-1"
-              >
-                View on Stellar Explorer
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-          )}
         </div>
 
         {/* Right: Share options */}
