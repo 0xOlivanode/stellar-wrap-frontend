@@ -10,7 +10,7 @@ import { ProgressIndicator } from '../components/ProgressIndicator';
 
 export default function ConnectPage() {
   const router = useRouter();
-  const { setAddress, setError, setStatus } = useWrapStore();
+  const { setAddress, setError, setStatus, network } = useWrapStore();
   const [walletAddress, setWalletAddress] = useState("");
   const [isConnecting, setIsConnecting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export default function ConnectPage() {
     setStatus("loading");
 
     try {
-      const publicKey = await connectFreighter();
+      const publicKey = await connectFreighter(network);
       setAddress(publicKey);
       setError(null);
       router.push("/loading");
