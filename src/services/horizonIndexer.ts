@@ -1,4 +1,4 @@
-import { Horizon, Server } from 'stellar-sdk';
+import { Horizon } from '@stellar/stellar-sdk';
 import { Network, RPC_ENDPOINTS } from '../config';
 import { horizonQueue } from '../utils/horizonRequestQueue';
 
@@ -34,11 +34,11 @@ const cache = new ResponseCache();
  * Service to fetch data from Stellar Horizon with rate limiting and caching
  */
 export class HorizonIndexerService {
-    private servers: Record<string, Server> = {};
+    private servers: Record<string, Horizon.Server> = {};
 
-    private getServer(network: Network): Server {
+    private getServer(network: Network): Horizon.Server {
         if (!this.servers[network]) {
-            this.servers[network] = new Server(RPC_ENDPOINTS[network]);
+            this.servers[network] = new Horizon.Server(RPC_ENDPOINTS[network]);
         }
         return this.servers[network];
     }
@@ -61,7 +61,7 @@ export class HorizonIndexerService {
     /**
      * Fetches payments for an account
      */
-    async getPayments(address: string, network: Network, limit = 100): Promise<Horizon.ServerApi.PaymentOperationResponse[]> {
+    async getPayments(address: string, network: Network, limit = 100) {
         const cacheKey = `payments:${network}:${address}:${limit}`;
         const cached = cache.get(cacheKey);
         if (cached) return cached;
@@ -79,7 +79,7 @@ export class HorizonIndexerService {
     /**
      * Fetches transactions for an account
      */
-    async getTransactions(address: string, network: Network, limit = 100): Promise<Horizon.ServerApi.TransactionResponse[]> {
+    async getTransactions(address: string, network: Network, limit = 100) {
         const cacheKey = `transactions:${network}:${address}:${limit}`;
         const cached = cache.get(cacheKey);
         if (cached) return cached;

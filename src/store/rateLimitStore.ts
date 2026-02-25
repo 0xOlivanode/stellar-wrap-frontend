@@ -13,7 +13,7 @@ interface RateLimitState {
     reset: () => void;
 }
 
-export const useRateLimitStore = create<RateLimitState>((set: (partial: Partial<RateLimitState> | ((state: RateLimitState) => Partial<RateLimitState>), replace?: boolean) => void) => ({
+export const useRateLimitStore = create<RateLimitState>((set) => ({
     isRateLimited: false,
     resetTime: null,
     retryAttempt: 0,
