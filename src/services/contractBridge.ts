@@ -2,7 +2,6 @@
 import {
   Contract,
   Transaction,
-  FeeBumpTransaction,
   TransactionBuilder,
   xdr,
   BASE_FEE,
@@ -250,7 +249,7 @@ async function buildMintTransaction(
 /**
  * Calculates estimated transaction fee from simulation
  */
-function calculateEstimatedFee(simulation: any, baseFee: number = 100): number {
+function calculateEstimatedFee(simulation: { cost?: SimulationCost }, baseFee = 100): number {
   // Base fee is in stroops (1 XLM = 10,000,000 stroops)
   // Default base fee is 100 stroops (0.00001 XLM)
   let estimatedFee = baseFee;
@@ -286,7 +285,7 @@ async function validateAccountBalance(
     const account = await horizonServer.loadAccount(accountAddress);
     
     // Get native XLM balance (first balance entry)
-    const xlmBalance = account.balances.find((b: any) => b.asset_type === 'native');
+    const xlmBalance = account.balances.find((b) => b.asset_type === 'native');
     const balance = xlmBalance ? parseFloat(xlmBalance.balance) : 0;
     
     return {
@@ -294,7 +293,7 @@ async function validateAccountBalance(
       balance,
       required: requiredFee,
     };
-  } catch (error) {
+  } catch {
     // If we can't get account, assume insufficient (will fail later anyway)
     return {
       sufficient: false,
@@ -307,10 +306,10 @@ async function validateAccountBalance(
 /**
  * Generates a cache key for simulation results
  */
-function getSimulationCacheKey(transaction: any, accountAddress: string): string {
+function getSimulationCacheKey(transaction: Transaction, accountAddress: string): string {
   // Use transaction hash or XDR as cache key
   try {
-    const xdr = transaction.toXDR('base64');
+    const xdr = transaction.toXDR();
     return `${accountAddress}:${xdr.substring(0, 50)}`;
   } catch {
     // Fallback to account address + timestamp if we can't get XDR
@@ -341,7 +340,7 @@ function clearExpiredSimulationCache(): void {
  */
 async function simulateTransaction(
   server: Server,
-  transaction: any,
+  transaction: Transaction,
   accountAddress: string,
   network: Network,
   observer: TransactionObserver | undefined,
@@ -363,8 +362,9 @@ async function simulateTransaction(
     const simulation = await server.simulateTransaction(transaction);
 
     // Check if simulation failed
-    if ('error' in simulation || (simulation as any).errorResult) {
-      const errorResult = (simulation as any).errorResult || (simulation as any).error;
+    const simulationAny = simulation as unknown as Record<string, unknown>;
+    if ('error' in simulation || simulationAny.errorResult) {
+      const errorResult = (simulationAny.errorResult || simulationAny.error) as unknown;
       const errorMessage = parseContractError(errorResult || simulation);
       
       const result: SimulationResult = {
@@ -377,17 +377,19 @@ async function simulateTransaction(
     }
 
     // Parse successful simulation
-    const cost: SimulationCost | undefined = (simulation as any).cost
+    const costData = simulationAny.cost as { cpuInsns?: number; memBytes?: number } | undefined;
+    const cost: SimulationCost | undefined = costData
       ? {
-          cpuInsns: (simulation as any).cost.cpuInsns || 0,
-          memBytes: (simulation as any).cost.memBytes || 0,
+          cpuInsns: costData.cpuInsns || 0,
+          memBytes: costData.memBytes || 0,
         }
       : undefined;
 
-    const footprint: SimulationFootprint | undefined = (simulation as any).footprint
+    const footprintData = simulationAny.footprint as { readOnly?: string[]; readWrite?: string[] } | undefined;
+    const footprint: SimulationFootprint | undefined = footprintData
       ? {
-          readOnly: (simulation as any).footprint.readOnly || [],
-          readWrite: (simulation as any).footprint.readWrite || [],
+          readOnly: footprintData.readOnly || [],
+          readWrite: footprintData.readWrite || [],
         }
       : undefined;
 
@@ -395,9 +397,9 @@ async function simulateTransaction(
       success: true,
       cost,
       footprint,
-      result: (simulation as any).result,
-      estimatedFee: calculateEstimatedFee(simulation),
-      requiresRestore: !!(simulation as any).restorePreamble,
+      result: simulationAny.result,
+      estimatedFee: calculateEstimatedFee(simulationAny as { cost?: SimulationCost }),
+      requiresRestore: !!(simulationAny.restorePreamble),
     };
 
     // Validate account balance
