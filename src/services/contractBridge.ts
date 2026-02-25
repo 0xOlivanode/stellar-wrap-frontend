@@ -247,7 +247,6 @@ async function buildMintTransaction(
   return { transaction, contract };
 }
 
-<<<<<<< HEAD
 /**
  * Calculates estimated transaction fee from simulation
  */
@@ -363,7 +362,6 @@ async function simulateTransaction(
   try {
     const simulation = await server.simulateTransaction(transaction);
 
-<<<<<<< HEAD
     // Check if simulation failed
     if ('error' in simulation || (simulation as any).errorResult) {
       const errorResult = (simulation as any).errorResult || (simulation as any).error;
