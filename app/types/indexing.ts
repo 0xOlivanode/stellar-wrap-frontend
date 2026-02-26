@@ -81,6 +81,14 @@ export const STEP_ORDER: IndexingStep[] = [
   "finalizing",
 ];
 
+export interface IndexingMetrics {
+  transactionCount: number;
+  assetCount: number;
+  contractCount: number;
+  volumeProcessed: string; // Total volume as string (for large numbers)
+  timeframesProcessed: number; // Number of timeframes completed
+}
+
 export interface IndexingProgress {
   currentStep: IndexingStep | null;
   stepProgress: Record<IndexingStep, number>; // 0-100 per step
@@ -92,6 +100,7 @@ export interface IndexingProgress {
   error: IndexingError | null;
   isLoading: boolean;
   isCancelled: boolean;
+  metrics: IndexingMetrics; // Real-time metrics for visualizations
 }
 
 export interface IndexingError {

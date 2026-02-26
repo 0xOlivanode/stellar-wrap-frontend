@@ -219,6 +219,13 @@ async function runIndexingInternal(
       });
       allTransactions.push(...recordsInRange);
 
+      // Emit metrics update - transaction count
+      emit(() =>
+        emitter.emitMetricsUpdate({
+          transactionCount: allTransactions.length,
+        }),
+      );
+
       if (
         recordsWithOps.some((tx: TransactionRecord) => {
           return new Date(tx.created_at) < cutoffDate;
@@ -264,28 +271,43 @@ async function runIndexingInternal(
     const filteredTransactions = await animateStep(
       "filtering-timeframes",
       emitter,
-      () =>
-        allTransactions.filter((tx) => {
+      () => {
+        const filtered = allTransactions.filter((tx) => {
           const txData = tx as unknown as Record<string, unknown>;
           return new Date(txData.created_at as string) >= cutoffDate;
-        }),
+        });
+        // Emit metrics update - timeframes processed
+        emit(() =>
+          emitter.emitMetricsUpdate({
+            timeframesProcessed: 1,
+          }),
+        );
+        return filtered;
+      },
       background,
     );
 
     currentEmittedStep = "calculating-volume";
     emit(() => emitter.emitStepChange("calculating-volume"));
     await animateStep("calculating-volume", emitter, () => {
+      let totalVolume = 0;
       filteredTransactions.forEach((tx) => {
         const txData = tx as Record<string, unknown>;
         (Array.isArray(txData.operations) ? txData.operations : []).forEach(
           (op) => {
             const opData = op as Record<string, unknown>;
             if (opData.type === "payment" && opData.amount) {
-              parseFloat(String(opData.amount));
+              totalVolume += parseFloat(String(opData.amount));
             }
           },
         );
       });
+      // Emit metrics update - volume processed
+      emit(() =>
+        emitter.emitMetricsUpdate({
+          volumeProcessed: totalVolume.toFixed(2),
+        }),
+      );
     }, background);
 
     currentEmittedStep = "identifying-assets";
@@ -297,24 +319,37 @@ async function runIndexingInternal(
         (Array.isArray(txData.operations) ? txData.operations : []).forEach(
           (op) => {
             const opData = op as Record<string, unknown>;
+      // Emit metrics update - asset count
+      emit(() =>
+        emitter.emitMetricsUpdate({
+          assetCount: map.size,
+        }),
+      );
             if (opData.type === "payment") {
               const key = String(opData.asset_code || "native");
               map.set(key, (map.get(key) || 0) + 1);
             }
           },
         );
-      });
-      return map;
-    }, background);
-
-    currentEmittedStep = "counting-contracts";
-    emit(() => emitter.emitStepChange("counting-contracts"));
-    await animateStep("counting-contracts", emitter, () =>
-      filteredTransactions.reduce((count: number, tx) => {
+    const contractCount = await animateStep("counting-contracts", emitter, () => {
+      const count = filteredTransactions.reduce((count: number, tx) => {
         const txData = tx as Record<string, unknown>;
         return (
           count +
           (Array.isArray(txData.operations) ? txData.operations : []).filter(
+            (op) =>
+              (op as Record<string, unknown>).type === "invoke_host_function",
+          ).length
+        );
+      }, 0);
+      // Emit metrics update - contract count
+      emit(() =>
+        emitter.emitMetricsUpdate({
+          contractCount: count,
+        }),
+      );
+      return count;
+    },       (Array.isArray(txData.operations) ? txData.operations : []).filter(
             (op) =>
               (op as Record<string, unknown>).type === "invoke_host_function",
           ).length
@@ -335,7 +370,9 @@ async function runIndexingInternal(
       });
       const r = calculateAchievements(typedTransactions);
       r.accountId = accountId;
-      void assetMap; // consumed by achievementCalculator indirectly
+      // Use assetMap and contractCount for additional metadata if needed
+      void assetMap;
+      void contractCount;
       return r;
     }, background);
 

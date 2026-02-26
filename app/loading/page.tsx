@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { Home, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ProgressIndicator } from "../components/ProgressIndicator";
-import { StepProgressDisplay } from "../components/StepProgressDisplay";
+import { IndexingSkeleton } from "../components/IndexingSkeleton";
 import { CacheStatusBadge } from "../components/CacheStatusBadge";
 import { MuteToggle } from "../components/MuteToggle";
 import { useWrapStore } from "../store/wrapStore";
@@ -222,9 +222,9 @@ export default function LoadingScreen() {
       {/* Container for centered layout with progress left and content right */}
       <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 w-full max-w-6xl px-4 pointer-events-auto">
         <div className="flex items-center justify-between gap-8">
-          {/* Step Progress Display - Left side */}
-          <div className="w-80 md:w-96 pointer-events-auto space-y-4">
-            <StepProgressDisplay
+          {/* IndexingSkeleton - Enhanced progress display with visualizations */}
+          <div className="w-full md:w-full lg:max-w-3xl pointer-events-auto space-y-4">
+            <IndexingSkeleton
               onCancel={handleCancel}
               onRetry={handleRetry}
             />
