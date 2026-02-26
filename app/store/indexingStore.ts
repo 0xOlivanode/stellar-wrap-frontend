@@ -33,6 +33,7 @@ interface IndexingStoreState extends IndexingProgress {
   saveState: () => void;
   loadState: () => boolean; // returns true if state was loaded
   clearPersistedState: () => void;
+  updateMetrics: (metrics: Partial<IndexingProgress['metrics']>) => void;
 }
 
 const initialCompletedStepRecord: Record<IndexingStep, boolean> = {
@@ -67,6 +68,13 @@ const initialState: IndexingProgress & {
   error: null,
   isLoading: false,
   isCancelled: false,
+  metrics: {
+    transactionCount: 0,
+    assetCount: 0,
+    contractCount: 0,
+    volumeProcessed: "0",
+    timeframesProcessed: 0,
+  },
 };
 
 export const useIndexingStore = create<IndexingStoreState>((set, get) => ({
@@ -248,5 +256,14 @@ export const useIndexingStore = create<IndexingStoreState>((set, get) => ({
         console.warn("Failed to clear persisted state:", error);
       }
     }
+  },
+
+  updateMetrics: (metrics) => {
+    set((state) => ({
+      metrics: {
+        ...state.metrics,
+        ...metrics,
+      },
+    }));
   },
 }));

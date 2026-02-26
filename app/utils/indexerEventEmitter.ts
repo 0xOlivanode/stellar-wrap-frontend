@@ -7,7 +7,7 @@
  */
 
 import { EventEmitter } from "events";
-import { IndexingStep } from "@/app/types/indexing";
+import { IndexingStep, IndexingMetrics } from "@/app/types/indexing";
 import { useIndexingStore } from "@/app/store/indexingStore";
 
 /**
@@ -24,7 +24,8 @@ export type IndexerEvent =
       recoverable: boolean;
     }
   | { type: "indexing-complete"; data: unknown }
-  | { type: "indexing-cancelled" };
+  | { type: "indexing-cancelled" }
+  | { type: "metrics-update"; metrics: Partial<IndexingMetrics> };
 
 /**
  * Singleton event emitter for indexer service
@@ -87,6 +88,13 @@ export class IndexerEventEmitter extends EventEmitter {
   }
 
   /**
+   * Emit metrics update
+   */
+  emitMetricsUpdate(metrics: Partial<IndexingMetrics>): void {
+    this.emit("metrics-update", { type: "metrics-update", metrics });
+  }
+
+  /**
    * Connect emitter to Zustand store (call once during app initialization)
    * Safe to call multiple times - will only connect once
    */
@@ -117,7 +125,6 @@ export class IndexerEventEmitter extends EventEmitter {
     this.on("indexing-complete", ({ _data }) => {
       // Clear persisted state on successful completion
       store.getState().clearPersistedState();
-      // You can also trigger additional actions here if needed
     });
 
     this.on("indexing-cancelled", () => {
